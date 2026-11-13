@@ -1,0 +1,35 @@
+PHẦN 1: Phân tích cơ chế tách từ (Tokenization) của BPE đối với Tiếng Việt
+Thắc mắc của Hoàng ("Có phải hệ thống đếm Token của AI bị lỗi đếm trùng khi gặp tiếng Việt không?") là KHÔNG CHÍNH XÁC. Hệ thống không bị lỗi, mà nguyên nhân xuất phát từ đặc thù của thuật toán Byte-Pair Encoding (BPE) và mức độ phủ dữ liệu trong tập huấn luyện (Pre-training dataset) của LLM:
+1. Thuật toán BPE và Sub-word Units: 
+   - Các mô hình ngôn ngữ lớn (như GPT của OpenAI) không đọc văn bản theo từng từ nguyên vẹn (words) hay từng chữ cái đơn lẻ, mà chia nhỏ văn bản thành các đơn vị nhỏ hơn gọi là sub-word units (mảnh từ/byte).
+2. Sự thiếu hụt dữ liệu tiếng Việt trong tập Pre-training:
+   - Trong giai đoạn huấn luyện mô hình, dữ liệu tiếng Anh chiếm tỷ trọng cực kỳ lớn, do đó từ điển của BPE chứa rất nhiều từ tiếng Anh hoàn chỉnh (được mã hóa thành 1 token duy nhất).
+   - Ngược lại, tiếng Việt có các dấu thanh (sắc, huyền, hỏi, ngã, nặng) và các ký tự đặc biệt (ă, â, đ, ê, ô, ơ, ư). Do tỷ lệ văn bản tiếng Việt trong tập dữ liệu huấn luyện thấp hơn nhiều, thuật toán BPE không có sẵn các từ tiếng Việt nguyên vẹn trong từ điển.
+3. Nguyên nhân Mẫu B tốn gấp ~2.4 lần Token so với Mẫu A:
+   - Khi gặp một từ tiếng Việt có dấu (ví dụ: chữ "nguồn" hoặc "khu vực"), bộ Tokenizer buộc phải bẻ nhỏ từ đó thành các ký tự gốc cộng với các dấu thanh riêng biệt (mỗi dấu hoặc phần phụ âm/nguyên âm bị cắt thành một token riêng). 
+   - Kết quả là 1 từ tiếng Việt thường bị băm thành 2 đến 3 tokens, khiến tổng số token của Mẫu B vọt lên 285 tokens (tỷ lệ 2.85 tokens/word) trong khi Mẫu A (tiếng Anh) chỉ tốn 118 tokens (1.18 tokens/word).
+PHẦN 2: Đề xuất 2 kỹ thuật viết Prompt giúp tiết kiệm 30-40% Token tiếng Việt
+Để tối ưu hóa chi phí và giảm thiểu lượng token tiêu thụ khi làm việc với văn bản tiếng Việt mà không làm biến đổi nội dung hay ý nghĩa, Hoàng có thể áp dụng 2 kỹ thuật sau:
+Kỹ thuật 1: Kỹ thuật Prompt bằng tiếng Anh (Cross-lingual Prompting)
+- Cách thực hiện: Viết toàn bộ câu lệnh hướng dẫn (system instruction, ngữ cảnh, yêu cầu) bằng tiếng Anh, chỉ giữ lại phần dữ liệu thô (hoặc tên riêng) cần xử lý bằng tiếng Việt nếu bắt buộc.
+- Lý do tiết kiệm: Tiếng Anh có mật độ token thấp hơn nhiều (tỷ lệ ~1.1 - 1.2 tokens/word). Khiến phần câu lệnh hướng dẫn không bị đội chi phí token, giúp giảm tổng lượng token tiêu thụ của toàn bộ API call từ 30% đến 40%.
+- Ví dụ áp dụng:
+  "You are an expert marketing assistant. Analyze the following Vietnamese product description data and extract key benefits into a Markdown table.
+  <data>
+  [Đoạn văn bản tiếng Việt cần xử lý]
+  </data>"
+Kỹ thuật 2: Kỹ thuật Viết gọn, cô đọng cấu trúc Prompt (Concise Structuring)
+- Cách thực hiện: Loại bỏ hoàn toàn các từ nối rườm rà, các câu xã giao, giải thích dài dòng trong câu lệnh prompt. Sử dụng các cấu trúc từ khóa ngắn gọn, trực diện kết hợp với các ký tự phân tách (### hoặc ---) và Negative Prompting để AI hiểu ngay yêu cầu mà không cần câu lệnh dài.
+- Lý do tiết kiệm: Giảm thiểu số lượng từ ngữ thừa thãi trong câu lệnh, cắt bớt các token không cần thiết phát sinh từ văn phong giao tiếp dài dòng.
+- Ví dụ áp dụng:
+  "### Task: Extract marketing keywords
+  ### Input: [Dữ liệu tiếng Việt]
+  ### Output format: Markdown Table (Columns: Keyword, Category)
+  ### Constraint: No intro, no explanation."
+Bước 2: Lưu thành file Notepad trên máy tính
+Mở ứng dụng Notepad có sẵn trên máy tính Windows (nhấn phím Windows, gõ chữ Notepad rồi nhấn Enter).
+Dán (Ctrl + V) nội dung vừa copy ở trên vào cửa sổ Notepad.
+Nhấn tổ hợp phím Ctrl + S để lưu lại (Save).
+Đặt tên file theo cú pháp yêu cầu trên LMS Portal:
+Tên file: IT206-K26_KyNangPrompting_Session01_Ex03.txt
+Chọn thư mục lưu (ví dụ: Desktop hoặc thư mục Documents) rồi bấm Save.
